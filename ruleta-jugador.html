@@ -43,6 +43,7 @@
 
   .btn-green { background: var(--green); color: #000; width: 100%; padding: 14px; font-size: 16px; border-radius: 12px; margin-top: 4px; font-family: 'Outfit', sans-serif; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; }
   .btn-green:hover { filter: brightness(1.1); }
+  .btn-green:disabled { opacity: 0.5; cursor: not-allowed; }
 
   .wheel-area { position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px; }
   .wheel-container { position: relative; }
@@ -66,9 +67,19 @@
 
   .confetti-piece { position: fixed; width: 8px; height: 8px; top: -10px; opacity: 0; pointer-events: none; z-index: 200; border-radius: 2px; animation: fall linear forwards; }
   @keyframes fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; z-index: 500; }
+  .loading-spinner { width: 48px; height: 48px; border: 4px solid rgba(255,212,71,0.2); border-top-color: var(--gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { color: var(--muted); font-size: 14px; }
 </style>
 </head>
 <body>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Cargando ruleta...</div>
+</div>
 
 <div class="player-page">
   <div class="player-header">
@@ -91,7 +102,7 @@
         <label class="field-label">Número de celular</label>
         <input class="field" id="p-phone" placeholder="Ej: 1123456789" type="tel" />
       </div>
-      <button class="btn-green" onclick="submitForm()">¡Quiero girar la ruleta! 🎡</button>
+      <button class="btn-green" id="submit-btn" onclick="submitForm()">¡Quiero girar la ruleta! 🎡</button>
     </div>
   </div>
 
@@ -115,20 +126,23 @@
 </div>
 
 <script>
-// ========== SUPABASE ==========
 const SUPABASE_URL = 'https://sgrzjmjqurxgpwoythvb.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNncnpqbWpxdXJ4Z3B3b3l0aHZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMjcwNTQsImV4cCI6MjA5NDkwMzA1NH0.0ZI61twlhx5DHnPlY1CtIsTpCOXFyHRSiR_rRl__uJU';
+const SB_HEADERS = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
 
-async function sbInsert(data) {
+async function sbGetConfig() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/configuracion?id=eq.1', { headers: SB_HEADERS });
+    if (res.ok) { const data = await res.json(); return data[0] || null; }
+    return null;
+  } catch(e) { return null; }
+}
+
+async function sbInsertParticipante(data) {
   try {
     const res = await fetch(SUPABASE_URL + '/rest/v1/participantes', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Prefer': 'return=minimal'
-      },
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
       body: JSON.stringify(data)
     });
     return res.ok;
@@ -137,33 +151,43 @@ async function sbInsert(data) {
 
 async function sbCheckDni(dni) {
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/participantes?dni=eq.' + encodeURIComponent(dni) + '&select=id', {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY
-      }
-    });
+    const res = await fetch(SUPABASE_URL + '/rest/v1/participantes?dni=eq.' + encodeURIComponent(dni) + '&select=id', { headers: SB_HEADERS });
     if (res.ok) { const data = await res.json(); return data.length > 0; }
     return false;
   } catch(e) { return false; }
 }
 
-// ========== PREMIOS (hardcodeados, sin admin) ==========
-const prizes = [
-  { name: '10% de descuento',                      prob: 22, color: '#FFD447' },
-  { name: '15% de descuento',                      prob: 24, color: '#FF4D8D' },
-  { name: '20% de descuento',                      prob: 24, color: '#4DAAFF' },
-  { name: '25% de descuento',                      prob: 9,  color: '#2EE89A' },
-  { name: '$5000 off en compras mayores a $40000',  prob: 12, color: '#8B7CF6' },
-  { name: 'Muestras de productos',                  prob: 9,  color: '#FF8C42' },
-];
-
+let prizes = [];
+let winMsg = 'Mostrá esta pantalla al cajero para reclamar tu premio.';
 let spinning = false;
 let currentLead = null;
 let wheelRotation = 0;
 let offscreenCanvas = null;
 
-// ========== WHEEL DRAW ==========
+const DEFAULT_PRIZES = [
+  { name: '10% de descuento', prob: 22, color: '#FFD447' },
+  { name: '15% de descuento', prob: 24, color: '#FF4D8D' },
+  { name: '20% de descuento', prob: 24, color: '#4DAAFF' },
+  { name: '25% de descuento', prob: 9,  color: '#2EE89A' },
+  { name: '$5000 off en compras mayores a $40000', prob: 12, color: '#8B7CF6' },
+  { name: 'Muestras de productos', prob: 9, color: '#FF8C42' },
+];
+
+async function init() {
+  const config = await sbGetConfig();
+  if (config) {
+    if (config.prizes && config.prizes.length > 0) prizes = config.prizes;
+    else prizes = DEFAULT_PRIZES;
+    if (config.biz_name) document.getElementById('player-biz-name').textContent = config.biz_name;
+    if (config.win_msg) winMsg = config.win_msg;
+  } else {
+    prizes = DEFAULT_PRIZES;
+  }
+  document.getElementById('modal-msg').textContent = winMsg;
+  document.getElementById('loading-overlay').style.display = 'none';
+  renderPlayerWheel();
+}
+
 function drawWheelOnCanvas(canvas, prizes, size) {
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext('2d');
@@ -190,139 +214,78 @@ function drawWheelOnCanvas(canvas, prizes, size) {
 }
 
 function renderPlayerWheel() {
-  const canvas = document.getElementById('wheel-canvas');
-  drawWheelOnCanvas(canvas, prizes, 320);
-  wheelRotation = 0;
-  offscreenCanvas = null;
+  drawWheelOnCanvas(document.getElementById('wheel-canvas'), prizes, 320);
+  wheelRotation = 0; offscreenCanvas = null;
 }
 
-// ========== FORM ==========
 async function submitForm() {
   const name  = document.getElementById('p-name').value.trim();
   const dni   = document.getElementById('p-dni').value.trim();
   const phone = document.getElementById('p-phone').value.trim();
   const alertEl = document.getElementById('form-alert');
+  const btn = document.getElementById('submit-btn');
 
-  if (!name || !dni || !phone) {
-    alertEl.textContent = 'Por favor completá todos los campos.';
-    alertEl.style.display = 'block'; return;
-  }
-  if (!/^\d{6,12}$/.test(dni)) {
-    alertEl.textContent = 'El DNI debe tener solo números (entre 6 y 12 dígitos).';
-    alertEl.style.display = 'block'; return;
-  }
+  if (!name || !dni || !phone) { alertEl.textContent = 'Por favor completá todos los campos.'; alertEl.style.display = 'block'; return; }
+  if (!/^\d{6,12}$/.test(dni)) { alertEl.textContent = 'El DNI debe tener solo números (entre 6 y 12 dígitos).'; alertEl.style.display = 'block'; return; }
 
-  alertEl.textContent = '⏳ Verificando...';
-  alertEl.style.display = 'block';
-  alertEl.style.background = 'rgba(255,212,71,0.1)';
-  alertEl.style.borderColor = 'rgba(255,212,71,0.3)';
-  alertEl.style.color = 'var(--gold)';
+  btn.disabled = true;
+  alertEl.textContent = '⏳ Verificando...'; alertEl.style.display = 'block';
+  alertEl.style.background = 'rgba(255,212,71,0.1)'; alertEl.style.borderColor = 'rgba(255,212,71,0.3)'; alertEl.style.color = 'var(--gold)';
 
   const yaParticipo = await sbCheckDni(dni);
   if (yaParticipo) {
     alertEl.textContent = '⚠️ Este DNI ya participó. Solo se permite un giro por persona.';
-    alertEl.style.background = 'rgba(255,77,141,0.12)';
-    alertEl.style.borderColor = 'rgba(255,77,141,0.3)';
-    alertEl.style.color = 'var(--accent)';
-    alertEl.style.display = 'block'; return;
+    alertEl.style.background = 'rgba(255,77,141,0.12)'; alertEl.style.borderColor = 'rgba(255,77,141,0.3)'; alertEl.style.color = 'var(--accent)';
+    btn.disabled = false; return;
   }
 
-  alertEl.style.display = 'none';
-  currentLead = { name, dni, phone, date: new Date().toLocaleString('es-AR'), prize: null };
+  alertEl.style.display = 'none'; btn.disabled = false;
+  currentLead = { name, dni, phone, date: new Date().toLocaleString('es-AR') };
   document.getElementById('player-form-card').style.display = 'none';
   document.getElementById('wheel-area').style.display = 'flex';
   renderPlayerWheel();
-}
-
-// ========== SPIN ==========
-function buildOffscreen(size) {
-  offscreenCanvas = document.createElement('canvas');
-  offscreenCanvas.width = size; offscreenCanvas.height = size;
-  const ctx = offscreenCanvas.getContext('2d');
-  const total = prizes.reduce((s,p)=>s+p.prob,0);
-  const cx=size/2, cy=size/2, r=size/2-4;
-  let angle = -Math.PI/2;
-  prizes.forEach(prize => {
-    const slice=(prize.prob/total)*Math.PI*2;
-    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
-    ctx.fillStyle=prize.color; ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=2; ctx.stroke();
-    ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle+slice/2);
-    ctx.textAlign='right'; ctx.fillStyle='#000';
-    ctx.font=`bold ${Math.max(9,Math.min(13,size/22))}px Outfit`;
-    ctx.shadowColor='rgba(255,255,255,0.5)'; ctx.shadowBlur=3;
-    const label=prize.name.length>18?prize.name.slice(0,17)+'\u2026':prize.name;
-    ctx.fillText(label,r-10,4); ctx.restore();
-    angle+=slice;
-  });
-  ctx.beginPath(); ctx.arc(cx,cy,size*0.08,0,Math.PI*2);
-  ctx.fillStyle='#111'; ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=2; ctx.stroke();
 }
 
 function spinWheel() {
   if (spinning || !prizes.length) return;
   spinning = true;
   document.getElementById('spin-btn').disabled = true;
-
   const total = prizes.reduce((s,p)=>s+p.prob,0);
   let r = Math.random()*total, cum=0, prizeIdx=0;
-  for (let i=0; i<prizes.length; i++) {
-    cum += prizes[i].prob;
-    if (r <= cum) { prizeIdx=i; break; }
-  }
-
+  for (let i=0; i<prizes.length; i++) { cum += prizes[i].prob; if (r <= cum) { prizeIdx=i; break; } }
   let sliceStart = -Math.PI/2;
   for (let i=0; i<prizeIdx; i++) sliceStart += (prizes[i].prob/total)*Math.PI*2;
-  const sliceAngle = (prizes[prizeIdx].prob/total)*Math.PI*2;
-  const sliceMid = sliceStart + sliceAngle/2;
+  const sliceMid = sliceStart + (prizes[prizeIdx].prob/total)*Math.PI*2/2;
   const baseTarget = -Math.PI/2 - sliceMid;
   const curMod = ((wheelRotation % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
   let delta = ((baseTarget % (Math.PI*2)) + Math.PI*2) % (Math.PI*2) - curMod;
   if (delta < 0.1) delta += Math.PI*2;
   const totalDelta = delta + (6 + Math.floor(Math.random()*4)) * Math.PI*2;
-
   const canvas = document.getElementById('wheel-canvas');
   const size = canvas.width;
-  buildOffscreen(size);
-
-  const startRot = wheelRotation;
-  const duration = 5000;
-  const startTime = performance.now();
+  offscreenCanvas = document.createElement('canvas');
+  offscreenCanvas.width = size; offscreenCanvas.height = size;
+  drawWheelOnCanvas(offscreenCanvas, prizes, size);
+  const startRot = wheelRotation, duration = 5000, startTime = performance.now();
   function easeOut(t) { return 1 - Math.pow(1-t, 3); }
-
   function animate(now) {
     const t = Math.min((now-startTime)/duration, 1);
-    const rot = startRot + totalDelta * easeOut(t);
-    wheelRotation = rot;
+    wheelRotation = startRot + totalDelta * easeOut(t);
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0,0,size,size);
-    ctx.save();
-    ctx.translate(size/2,size/2);
-    ctx.rotate(rot);
-    ctx.translate(-size/2,-size/2);
-    ctx.drawImage(offscreenCanvas,0,0);
-    ctx.restore();
+    ctx.clearRect(0,0,size,size); ctx.save(); ctx.translate(size/2,size/2); ctx.rotate(wheelRotation); ctx.translate(-size/2,-size/2); ctx.drawImage(offscreenCanvas,0,0); ctx.restore();
     if (t < 1) requestAnimationFrame(animate);
     else { spinning=false; setTimeout(()=>showResult(prizeIdx), 400); }
   }
   requestAnimationFrame(animate);
 }
 
-// ========== RESULT ==========
 async function showResult(prizeIdx) {
   const prize = prizes[prizeIdx];
   if (currentLead) {
-    currentLead.prize = prize.name;
-    await sbInsert({
-      nombre: currentLead.name,
-      dni: currentLead.dni,
-      celular: currentLead.phone,
-      premio: prize.name,
-      fecha: currentLead.date
-    });
+    await sbInsertParticipante({ nombre: currentLead.name, dni: currentLead.dni, celular: currentLead.phone, premio: prize.name, fecha: currentLead.date });
   }
   document.getElementById('modal-prize').textContent = prize.name;
+  document.getElementById('modal-msg').textContent = winMsg;
   document.getElementById('modal-emoji').textContent = '🎉';
   document.getElementById('result-modal').classList.add('show');
   launchConfetti();
@@ -333,19 +296,15 @@ function closeModal() { document.getElementById('result-modal').classList.remove
 function launchConfetti() {
   const colors = ['#FFD447','#FF4D8D','#4DAAFF','#2EE89A','#FF8C42'];
   for (let i=0; i<80; i++) {
-    const el = document.createElement('div');
-    el.className = 'confetti-piece';
-    el.style.left = Math.random()*100+'vw';
-    el.style.background = colors[Math.floor(Math.random()*colors.length)];
-    el.style.animationDuration = (1.5+Math.random()*2)+'s';
-    el.style.animationDelay = Math.random()*0.8+'s';
+    const el = document.createElement('div'); el.className = 'confetti-piece';
+    el.style.left = Math.random()*100+'vw'; el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.animationDuration = (1.5+Math.random()*2)+'s'; el.style.animationDelay = Math.random()*0.8+'s';
     el.style.width = el.style.height = (6+Math.random()*8)+'px';
-    document.body.appendChild(el);
-    setTimeout(()=>el.remove(), 4000);
+    document.body.appendChild(el); setTimeout(()=>el.remove(), 4000);
   }
 }
 
-renderPlayerWheel();
+init();
 </script>
 </body>
 </html>
