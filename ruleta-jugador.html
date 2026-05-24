@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ruleta de Premios</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #FFD447;
+    --gold-dark: #E6B800;
+    --bg: #0A0A14;
+    --surface: #13131F;
+    --surface2: #1C1C2E;
+    --text: #F0EEF8;
+    --muted: #7A789A;
+    --accent: #FF4D8D;
+    --green: #2EE89A;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .player-page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 24px 16px 40px; background: radial-gradient(ellipse at top, #1A1040 0%, var(--bg) 65%); }
+  .player-header { text-align: center; margin-bottom: 20px; }
+  .player-biz-name { font-family: 'Bebas Neue', cursive; font-size: 36px; color: var(--gold); letter-spacing: 3px; line-height: 1.1; }
+  .player-subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .player-form-card { background: var(--surface); border: 1px solid rgba(255,212,71,0.15); border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 420px; margin-bottom: 24px; }
+  .player-form-fields { display: flex; flex-direction: column; gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  label.field-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; display: block; }
+
+  .field {
+    width: 100%; background: var(--surface2); border: 1.5px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 10px 14px; color: var(--text);
+    font-family: 'Outfit', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s;
+  }
+  .field:focus { border-color: var(--gold); }
+  .field::placeholder { color: var(--muted); }
+
+  .alert { background: rgba(255,77,141,0.12); border: 1px solid rgba(255,77,141,0.3); color: var(--accent); border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 4px; display: none; line-height: 1.5; }
+
+  .btn-green { background: var(--green); color: #000; width: 100%; padding: 14px; font-size: 16px; border-radius: 12px; margin-top: 4px; font-family: 'Outfit', sans-serif; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; }
+  .btn-green:hover { filter: brightness(1.1); }
+
+  .wheel-area { position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  .wheel-container { position: relative; }
+  .wheel-pointer { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 28px solid var(--gold); filter: drop-shadow(0 2px 8px rgba(255,212,71,0.6)); z-index: 10; }
+  #wheel-canvas { display: block; filter: drop-shadow(0 4px 30px rgba(0,0,0,0.5)); }
+
+  .spin-btn { background: linear-gradient(135deg, var(--gold) 0%, #FF9D00 100%); color: #000; border: none; border-radius: 50px; padding: 16px 48px; font-family: 'Bebas Neue', cursive; font-size: 26px; letter-spacing: 3px; cursor: pointer; transition: all 0.25s; box-shadow: 0 4px 20px rgba(255,212,71,0.35); }
+  .spin-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 6px 28px rgba(255,212,71,0.5); }
+  .spin-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 24px; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border: 1px solid rgba(255,212,71,0.3); border-radius: 24px; padding: 36px 32px; text-align: center; max-width: 380px; width: 100%; transform: scale(0.85); transition: transform 0.35s cubic-bezier(.34,1.56,.64,1); }
+  .modal-overlay.show .modal { transform: scale(1); }
+  .modal-emoji { font-size: 60px; line-height: 1; margin-bottom: 12px; }
+  .modal-title { font-family: 'Bebas Neue', cursive; font-size: 42px; color: var(--gold); letter-spacing: 2px; line-height: 1; margin-bottom: 8px; }
+  .modal-prize { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+  .modal-msg { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+  .modal-close { background: var(--gold); color: #000; border: none; border-radius: 12px; padding: 12px 32px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; width: 100%; transition: all 0.2s; }
+  .modal-close:hover { background: var(--gold-dark); }
+
+  .confetti-piece { position: fixed; width: 8px; height: 8px; top: -10px; opacity: 0; pointer-events: none; z-index: 200; border-radius: 2px; animation: fall linear forwards; }
+  @keyframes fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+</style>
+</head>
+<body>
+
+<div class="player-page">
+  <div class="player-header">
+    <div class="player-biz-name" id="player-biz-name">TUKSO PREMIOS</div>
+    <div class="player-subtitle">¡Girá la ruleta y ganá un premio! 🎁</div>
+  </div>
+
+  <div class="player-form-card" id="player-form-card">
+    <div id="form-alert" class="alert"></div>
+    <div class="player-form-fields">
+      <div class="form-group">
+        <label class="field-label">Nombre completo</label>
+        <input class="field" id="p-name" placeholder="Tu nombre y apellido" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">DNI / Documento de identidad</label>
+        <input class="field" id="p-dni" placeholder="Ej: 12345678" inputmode="numeric" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">Número de celular</label>
+        <input class="field" id="p-phone" placeholder="Ej: 1123456789" type="tel" />
+      </div>
+      <button class="btn-green" onclick="submitForm()">¡Quiero girar la ruleta! 🎡</button>
+    </div>
+  </div>
+
+  <div class="wheel-area" id="wheel-area" style="display:none">
+    <div class="wheel-container">
+      <div class="wheel-pointer"></div>
+      <canvas id="wheel-canvas" width="320" height="320"></canvas>
+    </div>
+    <button class="spin-btn" id="spin-btn" onclick="spinWheel()">¡GIRAR!</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="result-modal">
+  <div class="modal">
+    <div class="modal-emoji" id="modal-emoji">🎉</div>
+    <div class="modal-title">¡GANASTE!</div>
+    <div class="modal-prize" id="modal-prize"></div>
+    <div class="modal-msg" id="modal-msg">Mostrá esta pantalla al cajero para reclamar tu premio.</div>
+    <button class="modal-close" onclick="closeModal()">¡Reclamar Premio!</button>
+  </div>
+</div>
+
+<script>
+// ========== SUPABASE ==========
+const SUPABASE_URL = 'https://sgrzjmjqurxgpwoythvb.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNncnpqbWpxdXJ4Z3B3b3l0aHZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMjcwNTQsImV4cCI6MjA5NDkwMzA1NH0.0ZI61twlhx5DHnPlY1CtIsTpCOXFyHRSiR_rRl__uJU';
+
+async function sbInsert(data) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/participantes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(data)
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
+async function sbCheckDni(dni) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/participantes?dni=eq.' + encodeURIComponent(dni) + '&select=id', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
+    if (res.ok) { const data = await res.json(); return data.length > 0; }
+    return false;
+  } catch(e) { return false; }
+}
+
+// ========== PREMIOS (hardcodeados, sin admin) ==========
+const prizes = [
+  { name: '10% de descuento',                      prob: 22, color: '#FFD447' },
+  { name: '15% de descuento',                      prob: 24, color: '#FF4D8D' },
+  { name: '20% de descuento',                      prob: 24, color: '#4DAAFF' },
+  { name: '25% de descuento',                      prob: 9,  color: '#2EE89A' },
+  { name: '$5000 off en compras mayores a $40000',  prob: 12, color: '#8B7CF6' },
+  { name: 'Muestras de productos',                  prob: 9,  color: '#FF8C42' },
+];
+
+let spinning = false;
+let currentLead = null;
+let wheelRotation = 0;
+let offscreenCanvas = null;
+
+// ========== WHEEL DRAW ==========
+function drawWheelOnCanvas(canvas, prizes, size) {
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+  const total = prizes.reduce((s,p) => s+p.prob, 0);
+  const cx = size/2, cy = size/2, r = size/2 - 4;
+  let angle = -Math.PI/2;
+  prizes.forEach(prize => {
+    const slice = (prize.prob/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
+    ctx.fillStyle = prize.color; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle+slice/2);
+    ctx.textAlign='right'; ctx.fillStyle='#000';
+    ctx.font = `bold ${Math.max(9,Math.min(13,size/22))}px Outfit`;
+    ctx.shadowColor='rgba(255,255,255,0.5)'; ctx.shadowBlur=3;
+    const label = prize.name.length > 18 ? prize.name.slice(0,17)+'\u2026' : prize.name;
+    ctx.fillText(label, r-10, 4); ctx.restore();
+    angle += slice;
+  });
+  ctx.beginPath(); ctx.arc(cx,cy,size*0.08,0,Math.PI*2);
+  ctx.fillStyle='#111'; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=2; ctx.stroke();
+}
+
+function renderPlayerWheel() {
+  const canvas = document.getElementById('wheel-canvas');
+  drawWheelOnCanvas(canvas, prizes, 320);
+  wheelRotation = 0;
+  offscreenCanvas = null;
+}
+
+// ========== FORM ==========
+async function submitForm() {
+  const name  = document.getElementById('p-name').value.trim();
+  const dni   = document.getElementById('p-dni').value.trim();
+  const phone = document.getElementById('p-phone').value.trim();
+  const alertEl = document.getElementById('form-alert');
+
+  if (!name || !dni || !phone) {
+    alertEl.textContent = 'Por favor completá todos los campos.';
+    alertEl.style.display = 'block'; return;
+  }
+  if (!/^\d{6,12}$/.test(dni)) {
+    alertEl.textContent = 'El DNI debe tener solo números (entre 6 y 12 dígitos).';
+    alertEl.style.display = 'block'; return;
+  }
+
+  alertEl.textContent = '⏳ Verificando...';
+  alertEl.style.display = 'block';
+  alertEl.style.background = 'rgba(255,212,71,0.1)';
+  alertEl.style.borderColor = 'rgba(255,212,71,0.3)';
+  alertEl.style.color = 'var(--gold)';
+
+  const yaParticipo = await sbCheckDni(dni);
+  if (yaParticipo) {
+    alertEl.textContent = '⚠️ Este DNI ya participó. Solo se permite un giro por persona.';
+    alertEl.style.background = 'rgba(255,77,141,0.12)';
+    alertEl.style.borderColor = 'rgba(255,77,141,0.3)';
+    alertEl.style.color = 'var(--accent)';
+    alertEl.style.display = 'block'; return;
+  }
+
+  alertEl.style.display = 'none';
+  currentLead = { name, dni, phone, date: new Date().toLocaleString('es-AR'), prize: null };
+  document.getElementById('player-form-card').style.display = 'none';
+  document.getElementById('wheel-area').style.display = 'flex';
+  renderPlayerWheel();
+}
+
+// ========== SPIN ==========
+function buildOffscreen(size) {
+  offscreenCanvas = document.createElement('canvas');
+  offscreenCanvas.width = size; offscreenCanvas.height = size;
+  const ctx = offscreenCanvas.getContext('2d');
+  const total = prizes.reduce((s,p)=>s+p.prob,0);
+  const cx=size/2, cy=size/2, r=size/2-4;
+  let angle = -Math.PI/2;
+  prizes.forEach(prize => {
+    const slice=(prize.prob/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
+    ctx.fillStyle=prize.color; ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=2; ctx.stroke();
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle+slice/2);
+    ctx.textAlign='right'; ctx.fillStyle='#000';
+    ctx.font=`bold ${Math.max(9,Math.min(13,size/22))}px Outfit`;
+    ctx.shadowColor='rgba(255,255,255,0.5)'; ctx.shadowBlur=3;
+    const label=prize.name.length>18?prize.name.slice(0,17)+'\u2026':prize.name;
+    ctx.fillText(label,r-10,4); ctx.restore();
+    angle+=slice;
+  });
+  ctx.beginPath(); ctx.arc(cx,cy,size*0.08,0,Math.PI*2);
+  ctx.fillStyle='#111'; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=2; ctx.stroke();
+}
+
+function spinWheel() {
+  if (spinning || !prizes.length) return;
+  spinning = true;
+  document.getElementById('spin-btn').disabled = true;
+
+  const total = prizes.reduce((s,p)=>s+p.prob,0);
+  let r = Math.random()*total, cum=0, prizeIdx=0;
+  for (let i=0; i<prizes.length; i++) {
+    cum += prizes[i].prob;
+    if (r <= cum) { prizeIdx=i; break; }
+  }
+
+  let sliceStart = -Math.PI/2;
+  for (let i=0; i<prizeIdx; i++) sliceStart += (prizes[i].prob/total)*Math.PI*2;
+  const sliceAngle = (prizes[prizeIdx].prob/total)*Math.PI*2;
+  const sliceMid = sliceStart + sliceAngle/2;
+  const baseTarget = -Math.PI/2 - sliceMid;
+  const curMod = ((wheelRotation % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+  let delta = ((baseTarget % (Math.PI*2)) + Math.PI*2) % (Math.PI*2) - curMod;
+  if (delta < 0.1) delta += Math.PI*2;
+  const totalDelta = delta + (6 + Math.floor(Math.random()*4)) * Math.PI*2;
+
+  const canvas = document.getElementById('wheel-canvas');
+  const size = canvas.width;
+  buildOffscreen(size);
+
+  const startRot = wheelRotation;
+  const duration = 5000;
+  const startTime = performance.now();
+  function easeOut(t) { return 1 - Math.pow(1-t, 3); }
+
+  function animate(now) {
+    const t = Math.min((now-startTime)/duration, 1);
+    const rot = startRot + totalDelta * easeOut(t);
+    wheelRotation = rot;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,size,size);
+    ctx.save();
+    ctx.translate(size/2,size/2);
+    ctx.rotate(rot);
+    ctx.translate(-size/2,-size/2);
+    ctx.drawImage(offscreenCanvas,0,0);
+    ctx.restore();
+    if (t < 1) requestAnimationFrame(animate);
+    else { spinning=false; setTimeout(()=>showResult(prizeIdx), 400); }
+  }
+  requestAnimationFrame(animate);
+}
+
+// ========== RESULT ==========
+async function showResult(prizeIdx) {
+  const prize = prizes[prizeIdx];
+  if (currentLead) {
+    currentLead.prize = prize.name;
+    await sbInsert({
+      nombre: currentLead.name,
+      dni: currentLead.dni,
+      celular: currentLead.phone,
+      premio: prize.name,
+      fecha: currentLead.date
+    });
+  }
+  document.getElementById('modal-prize').textContent = prize.name;
+  document.getElementById('modal-emoji').textContent = '🎉';
+  document.getElementById('result-modal').classList.add('show');
+  launchConfetti();
+}
+
+function closeModal() { document.getElementById('result-modal').classList.remove('show'); }
+
+function launchConfetti() {
+  const colors = ['#FFD447','#FF4D8D','#4DAAFF','#2EE89A','#FF8C42'];
+  for (let i=0; i<80; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.left = Math.random()*100+'vw';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.animationDuration = (1.5+Math.random()*2)+'s';
+    el.style.animationDelay = Math.random()*0.8+'s';
+    el.style.width = el.style.height = (6+Math.random()*8)+'px';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 4000);
+  }
+}
+
+renderPlayerWheel();
+</script>
+</body>
+</html>

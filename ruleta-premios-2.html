@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ruleta de Premios</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #FFD447;
+    --gold-dark: #E6B800;
+    --bg: #0A0A14;
+    --surface: #13131F;
+    --surface2: #1C1C2E;
+    --text: #F0EEF8;
+    --muted: #7A789A;
+    --accent: #FF4D8D;
+    --green: #2EE89A;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; background: var(--surface);
+    border-bottom: 1px solid rgba(255,212,71,0.15);
+  }
+  .nav-logo { font-family: 'Bebas Neue', cursive; font-size: 26px; color: var(--gold); letter-spacing: 2px; }
+  .nav-tabs { display: flex; gap: 8px; }
+  .nav-tab {
+    padding: 8px 18px; border-radius: 30px; border: 1.5px solid rgba(255,255,255,0.1);
+    background: transparent; color: var(--muted); font-family: 'Outfit', sans-serif;
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  }
+  .nav-tab.active { background: var(--gold); color: #000; border-color: var(--gold); }
+  .nav-tab:hover:not(.active) { border-color: var(--gold); color: var(--gold); }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ADMIN */
+  .admin-wrap { max-width: 960px; margin: 0 auto; padding: 36px 24px; }
+  .section-title { font-family: 'Bebas Neue', cursive; font-size: 32px; color: var(--gold); letter-spacing: 2px; margin-bottom: 6px; }
+  .section-sub { color: var(--muted); font-size: 14px; margin-bottom: 28px; }
+  .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  @media (max-width: 700px) { .admin-grid { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid rgba(255,255,255,0.07); border-radius: var(--radius); padding: 24px; }
+  .card-title { font-weight: 700; font-size: 16px; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+  .card-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); display: inline-block; }
+
+  .prize-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+  .prize-item { display: flex; align-items: center; gap: 10px; background: var(--surface2); border-radius: 10px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.05); }
+  .prize-color-dot { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.2); }
+  .prize-text { flex: 1; font-size: 14px; font-weight: 500; }
+  .prize-prob { font-size: 12px; color: var(--muted); background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 20px; }
+  .btn-remove { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; padding: 2px 4px; border-radius: 4px; transition: color 0.15s; }
+  .btn-remove:hover { color: var(--accent); }
+
+  .add-prize-form { display: flex; flex-direction: column; gap: 10px; }
+  .input-row { display: flex; gap: 8px; }
+  .field {
+    flex: 1; background: var(--surface2); border: 1.5px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 10px 14px; color: var(--text);
+    font-family: 'Outfit', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s;
+  }
+  .field:focus { border-color: var(--gold); }
+  .field::placeholder { color: var(--muted); }
+  .field-sm { width: 80px; flex: none; }
+
+  .btn { padding: 10px 20px; border-radius: 10px; border: none; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s; }
+  .btn-gold { background: var(--gold); color: #000; }
+  .btn-gold:hover { background: var(--gold-dark); transform: translateY(-1px); }
+  .btn-outline { background: transparent; border: 1.5px solid rgba(255,255,255,0.12); color: var(--text); }
+  .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+  .btn-green { background: var(--green); color: #000; width: 100%; padding: 14px; font-size: 16px; border-radius: 12px; margin-top: 4px; font-family: 'Outfit', sans-serif; font-weight: 700; border: none; cursor: pointer; transition: all 0.2s; }
+  .btn-green:hover { filter: brightness(1.1); }
+
+  .settings-form { display: flex; flex-direction: column; gap: 12px; }
+  label.field-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: -4px; font-weight: 600; display: block; }
+
+  .qr-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 10px 0; }
+  #qr-canvas { border-radius: 12px; background: white; padding: 12px; }
+  .qr-url { font-size: 12px; color: var(--muted); word-break: break-all; text-align: center; background: var(--surface2); padding: 8px 12px; border-radius: 8px; width: 100%; }
+
+  .wheel-preview { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+  .leads-wrap { margin-top: 36px; }
+  .leads-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .leads-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .leads-table th { text-align: left; padding: 10px 14px; background: var(--surface2); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; }
+  .leads-table th:first-child { border-radius: 8px 0 0 8px; }
+  .leads-table th:last-child { border-radius: 0 8px 8px 0; }
+  .leads-table td { padding: 12px 14px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .prize-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; background: rgba(255,212,71,0.15); color: var(--gold); }
+  .empty-state { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+
+  /* PLAYER */
+  .player-page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 24px 16px 40px; background: radial-gradient(ellipse at top, #1A1040 0%, var(--bg) 65%); }
+  .player-header { text-align: center; margin-bottom: 20px; }
+  .player-biz-name { font-family: 'Bebas Neue', cursive; font-size: 36px; color: var(--gold); letter-spacing: 3px; line-height: 1.1; }
+  .player-subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .player-form-card { background: var(--surface); border: 1px solid rgba(255,212,71,0.15); border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 420px; margin-bottom: 24px; }
+  .player-form-title { font-weight: 700; font-size: 18px; text-align: center; margin-bottom: 6px; }
+  .player-form-sub { color: var(--muted); font-size: 13px; text-align: center; margin-bottom: 20px; }
+  .player-form-fields { display: flex; flex-direction: column; gap: 14px; }
+  .player-form-fields .field { width: 100%; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+
+  .alert { background: rgba(255,77,141,0.12); border: 1px solid rgba(255,77,141,0.3); color: var(--accent); border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 4px; display: none; line-height: 1.5; }
+
+  .wheel-area { position: relative; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  .wheel-container { position: relative; }
+  .wheel-pointer { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 28px solid var(--gold); filter: drop-shadow(0 2px 8px rgba(255,212,71,0.6)); z-index: 10; }
+  #wheel-canvas { display: block; filter: drop-shadow(0 4px 30px rgba(0,0,0,0.5)); }
+  .spin-btn { background: linear-gradient(135deg, var(--gold) 0%, #FF9D00 100%); color: #000; border: none; border-radius: 50px; padding: 16px 48px; font-family: 'Bebas Neue', cursive; font-size: 26px; letter-spacing: 3px; cursor: pointer; transition: all 0.25s; box-shadow: 0 4px 20px rgba(255,212,71,0.35); }
+  .spin-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 6px 28px rgba(255,212,71,0.5); }
+  .spin-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 24px; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border: 1px solid rgba(255,212,71,0.3); border-radius: 24px; padding: 36px 32px; text-align: center; max-width: 380px; width: 100%; transform: scale(0.85); transition: transform 0.35s cubic-bezier(.34,1.56,.64,1); }
+  .modal-overlay.show .modal { transform: scale(1); }
+  .modal-emoji { font-size: 60px; line-height: 1; margin-bottom: 12px; }
+  .modal-title { font-family: 'Bebas Neue', cursive; font-size: 42px; color: var(--gold); letter-spacing: 2px; line-height: 1; margin-bottom: 8px; }
+  .modal-prize { font-size: 22px; font-weight: 700; margin-bottom: 10px; }
+  .modal-msg { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+  .modal-close { background: var(--gold); color: #000; border: none; border-radius: 12px; padding: 12px 32px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 15px; cursor: pointer; width: 100%; transition: all 0.2s; }
+  .modal-close:hover { background: var(--gold-dark); }
+
+  .confetti-piece { position: fixed; width: 8px; height: 8px; top: -10px; opacity: 0; pointer-events: none; z-index: 200; border-radius: 2px; animation: fall linear forwards; }
+  @keyframes fall { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+
+  /* LOGIN ADMIN */
+  .login-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 500; padding: 24px;
+    backdrop-filter: blur(8px);
+  }
+  .login-overlay.hidden { display: none; }
+  .login-box {
+    background: var(--surface); border: 1px solid rgba(255,212,71,0.25);
+    border-radius: 24px; padding: 40px 36px; width: 100%; max-width: 380px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,212,71,0.1);
+    animation: popIn 0.35s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .login-icon { font-size: 48px; margin-bottom: 12px; line-height: 1; }
+  .login-title { font-family: 'Bebas Neue', cursive; font-size: 32px; color: var(--gold); letter-spacing: 2px; margin-bottom: 6px; }
+  .login-sub { color: var(--muted); font-size: 13px; margin-bottom: 28px; line-height: 1.5; }
+  .login-field-wrap { position: relative; margin-bottom: 14px; }
+  .login-field {
+    width: 100%; background: var(--surface2); border: 1.5px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 12px 44px 12px 16px; color: var(--text);
+    font-family: 'Outfit', sans-serif; font-size: 15px; outline: none;
+    transition: border-color 0.2s; text-align: center; letter-spacing: 3px;
+  }
+  .login-field:focus { border-color: var(--gold); }
+  .login-field::placeholder { letter-spacing: 0; color: var(--muted); }
+  .toggle-pw {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 18px; padding: 0; line-height: 1;
+    transition: color 0.15s;
+  }
+  .toggle-pw:hover { color: var(--gold); }
+  .login-error { color: var(--accent); font-size: 13px; min-height: 20px; margin-bottom: 10px; }
+  .btn-login {
+    width: 100%; background: linear-gradient(135deg, var(--gold), #FF9D00);
+    color: #000; border: none; border-radius: 12px; padding: 14px;
+    font-family: 'Bebas Neue', cursive; font-size: 22px; letter-spacing: 2px;
+    cursor: pointer; transition: all 0.2s; margin-top: 4px;
+  }
+  .btn-login:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .login-hint { color: var(--muted); font-size: 11px; margin-top: 16px; opacity: 0.7; }
+
+  /* SHARE MODAL */
+  .share-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 300; padding: 24px;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .share-modal-overlay.show { opacity: 1; pointer-events: all; }
+  .share-modal {
+    background: var(--surface); border: 1px solid rgba(255,212,71,0.25);
+    border-radius: 24px; padding: 32px 28px; width: 100%; max-width: 400px;
+    transform: scale(0.85); transition: transform 0.35s cubic-bezier(.34,1.56,.64,1);
+    text-align: center;
+  }
+  .share-modal-overlay.show .share-modal { transform: scale(1); }
+  .share-modal-title { font-family: 'Bebas Neue', cursive; font-size: 28px; color: var(--gold); letter-spacing: 2px; margin-bottom: 6px; }
+  .share-modal-sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .share-url-box {
+    background: var(--surface2); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px; padding: 12px 14px; font-size: 12px;
+    color: var(--muted); word-break: break-all; margin-bottom: 16px;
+    text-align: left; line-height: 1.5;
+  }
+  .share-url-box span { color: var(--text); font-weight: 600; }
+  .share-btns { display: flex; gap: 10px; flex-direction: column; }
+  .btn-copy {
+    background: var(--gold); color: #000; border: none; border-radius: 10px;
+    padding: 12px; font-family: 'Outfit', sans-serif; font-weight: 700;
+    font-size: 15px; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-copy:hover { background: var(--gold-dark); }
+  .btn-share-close {
+    background: transparent; border: 1.5px solid rgba(255,255,255,0.12);
+    color: var(--text); border-radius: 10px; padding: 10px;
+    font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 14px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .btn-share-close:hover { border-color: var(--gold); color: var(--gold); }
+  .share-qr-wrap { margin: 16px 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  #share-qr-canvas { border-radius: 10px; background: white; padding: 10px; }
+
+  /* NAV logout btn */
+  .btn-logout {
+    padding: 6px 14px; border-radius: 30px; border: 1.5px solid rgba(255,77,141,0.4);
+    background: transparent; color: var(--accent); font-family: 'Outfit', sans-serif;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-logout:hover { background: rgba(255,77,141,0.15); border-color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">Acceso Admin</div>
+    <div class="login-sub">Ingresá la contraseña para acceder al panel de administración</div>
+    <div class="login-field-wrap">
+      <input class="login-field" type="password" id="admin-pw-input" placeholder="Contraseña" onkeydown="if(event.key==='Enter')doLogin()" />
+      <button class="toggle-pw" onclick="togglePwVisibility()" id="toggle-pw-btn" title="Mostrar/ocultar">👁</button>
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="btn-login" onclick="doLogin()">INGRESAR</button>
+    <div class="login-hint">La contraseña por defecto es: <strong>admin123</strong><br>Podés cambiarla en el panel.</div>
+  </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div class="share-modal-overlay" id="share-modal-overlay">
+  <div class="share-modal">
+    <div class="share-modal-title">🔗 Compartir con Jugadores</div>
+    <div class="share-modal-sub">Compartí el archivo <strong style="color:var(--gold)">ruleta-jugador.html</strong> con tus participantes. Es una versión separada que <strong>no tiene panel de administrador</strong>.</div>
+    <div style="background:rgba(46,232,154,0.1);border:1px solid rgba(46,232,154,0.3);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.6;color:var(--text)">
+      ✅ <strong>¿Cómo compartir?</strong><br>
+      1. Descargá el archivo de jugador<br>
+      2. Enviáselo por WhatsApp, email, etc.<br>
+      3. El jugador lo abre en su navegador<br>
+      4. Los datos quedan guardados en tu dispositivo
+    </div>
+    <div class="share-btns">
+      <button class="btn-copy" onclick="downloadPlayerFile()">⬇ Descargar archivo de jugador</button>
+      <button class="btn-share-close" onclick="closeShareModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<nav class="nav">
+  <div class="nav-logo" id="nav-logo-area" style="display:flex;align-items:center;gap:10px"><img id="nav-logo-img" src="" alt="" style="height:36px;border-radius:6px;display:none;object-fit:contain"> <span id="nav-logo-text">🎰 Ruleta</span></div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <div class="nav-tabs" id="nav-tabs-admin" style="display:none">
+      <button class="nav-tab active" id="tab-admin" onclick="showPage('admin')">⚙️ Admin</button>
+      <button class="nav-tab" id="tab-player" onclick="showPage('player')">🎡 Vista Jugador</button>
+    </div>
+    <button class="btn-logout" id="btn-logout" style="display:none" onclick="doLogout()">🔓 Cerrar sesión</button>
+    <button class="nav-tab" id="btn-open-admin" onclick="openAdminLogin()">🔐 Admin</button>
+  </div>
+</nav>
+
+<!-- ADMIN -->
+<div id="page-admin" class="page">
+<div class="admin-wrap">
+  <div class="section-title">Panel de Administración</div>
+  <div class="section-sub">Configurá tu ruleta y descargá el QR para compartir con tus clientes</div>
+  <div class="admin-grid">
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> Premios de la Ruleta</div>
+      <div class="prize-list" id="prize-list"></div>
+      <div class="add-prize-form">
+        <div class="input-row">
+          <input class="field" id="new-prize-name" placeholder="Nombre del premio (ej: 10% descuento)" />
+          <input class="field field-sm" id="new-prize-prob" type="number" min="1" max="100" placeholder="%" title="Probabilidad %" />
+        </div>
+        <button class="btn btn-gold" onclick="addPrize()">+ Agregar Premio</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> Configuración del Negocio</div>
+      <div class="settings-form">
+        <div>
+          <label class="field-label">Nombre del negocio</label>
+          <input class="field" id="biz-name" placeholder="ej: Café El Rincón" oninput="saveSettings()" style="width:100%" />
+        </div>
+        <div>
+          <label class="field-label">Mensaje al ganar</label>
+          <textarea class="field" id="win-msg" rows="3" placeholder="ej: ¡Felicidades! Mostrá esta pantalla al cajero." oninput="saveSettings()" style="resize:vertical;width:100%"></textarea>
+        </div>
+        <div>
+          <label class="field-label">Color primario</label>
+          <input type="color" id="wheel-color" value="#FFD447" onchange="saveSettings();renderPreview()" style="width:100%;height:42px;border-radius:10px;border:none;cursor:pointer;background:var(--surface2);padding:4px 8px;" />
+        </div>
+        <div>
+          <label class="field-label">Logo de la empresa (JPG/PNG)</label>
+          <input type="file" accept="image/jpeg,image/png,image/gif,image/webp" id="logo-upload" style="display:none" onchange="handleLogoUpload(event)" />
+          <div style="display:flex;gap:10px;align-items:center">
+            <button type="button" onclick="document.getElementById('logo-upload').click()" style="flex:1;background:var(--surface2);border:1.5px dashed rgba(255,212,71,0.4);border-radius:10px;padding:12px 14px;cursor:pointer;text-align:center;font-size:13px;color:var(--muted);font-family:Outfit,sans-serif;transition:all 0.2s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='rgba(255,212,71,0.4)';this.style.color='var(--muted)'">
+              📁 Seleccionar imagen
+            </button>
+            <div id="logo-preview-wrap" style="display:none;flex-direction:column;align-items:center">
+              <img id="logo-preview" src="" alt="Preview" style="height:44px;border-radius:8px;object-fit:contain;background:rgba(255,255,255,0.05);padding:4px" />
+              <button type="button" onclick="removeLogo()" style="margin-top:4px;background:none;border:none;color:var(--accent);font-size:11px;cursor:pointer;font-family:Outfit,sans-serif">✕ Quitar</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Nueva contraseña admin</label>
+          <input class="field" id="new-admin-pw" placeholder="Dejar vacío para no cambiar" style="width:100%" />
+        </div>
+        <button class="btn btn-green" onclick="applyConfig()">💾 Guardar y Actualizar Ruleta</button>
+        <button class="btn btn-gold" style="width:100%;padding:12px;font-size:15px;border-radius:12px;margin-top:4px" onclick="openShareModal()">🔗 Compartir link de jugador</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> Vista Previa Ruleta</div>
+      <div class="wheel-preview">
+        <canvas id="preview-canvas" width="260" height="260"></canvas>
+        <div style="color:var(--muted);font-size:13px;">Así verán la ruleta tus clientes</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="dot"></span> Código QR</div>
+      <div class="qr-wrap">
+        <canvas id="qr-canvas" width="180" height="180"></canvas>
+        <div class="qr-url" id="qr-url-display">Este QR apunta a la vista del jugador</div>
+        <div style="display:flex;gap:8px;width:100%">
+          <button class="btn btn-gold" style="flex:1" onclick="downloadQR()">⬇ Descargar QR</button>
+          <button class="btn btn-outline" onclick="showPage('player')">👁 Ver Página</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);text-align:center;">
+          Imprimí el QR y colocalo en tu negocio.<br>Tus clientes lo escanean y giran la ruleta.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="leads-wrap">
+    <div class="leads-header">
+      <div class="section-title" style="font-size:24px;margin-bottom:0">📋 Participantes Registrados</div>
+      <button class="btn btn-outline" onclick="exportCSV()">⬇ Exportar CSV</button>
+    </div>
+    <div id="leads-table-wrap"></div>
+  </div>
+</div>
+</div>
+
+<!-- PLAYER -->
+<div id="page-player" class="page active">
+<div class="player-page">
+  <div class="player-header">
+    <div id="player-logo-wrap" style="margin-bottom:12px;display:none">
+      <img id="player-logo-img" src="" alt="Logo" style="max-height:80px;max-width:220px;object-fit:contain;border-radius:10px;" />
+    </div>
+    <div class="player-biz-name" id="player-biz-name">Mi Negocio</div>
+    <div class="player-subtitle">¡Girá la ruleta y ganá un premio! 🎁</div>
+  </div>
+
+  <div class="player-form-card" id="player-form-card">
+    <div class="player-form-title">¿Quién eres?</div>
+    <div class="player-form-sub">Completá tus datos para participar</div>
+    <div id="form-alert" class="alert"></div>
+    <div class="player-form-fields">
+      <div class="form-group">
+        <label class="field-label">Nombre completo</label>
+        <input class="field" id="p-name" placeholder="Tu nombre y apellido" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">DNI / Documento de identidad</label>
+        <input class="field" id="p-dni" placeholder="Ej: 12345678" inputmode="numeric" />
+      </div>
+      <div class="form-group">
+        <label class="field-label">Número de celular</label>
+        <input class="field" id="p-phone" placeholder="Ej: 1123456789" type="tel" />
+      </div>
+      <button class="btn-green" onclick="submitForm()">¡Quiero girar la ruleta! 🎡</button>
+    </div>
+  </div>
+
+  <div class="wheel-area" id="wheel-area" style="display:none">
+    <div class="wheel-container">
+      <div class="wheel-pointer"></div>
+      <canvas id="wheel-canvas" width="320" height="320"></canvas>
+    </div>
+    <button class="spin-btn" id="spin-btn" onclick="spinWheel()">¡GIRAR!</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="result-modal">
+  <div class="modal">
+    <div class="modal-emoji" id="modal-emoji">🎉</div>
+    <div class="modal-title">¡GANASTE!</div>
+    <div class="modal-prize" id="modal-prize"></div>
+    <div class="modal-msg" id="modal-msg"></div>
+    <button class="modal-close" onclick="closeModal()">¡Reclamar Premio!</button>
+  </div>
+</div>
+
+<script>
+// ========== SUPABASE ==========
+const SUPABASE_URL = 'https://sgrzjmjqurxgpwoythvb.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNncnpqbWpxdXJ4Z3B3b3l0aHZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMjcwNTQsImV4cCI6MjA5NDkwMzA1NH0.0ZI61twlhx5DHnPlY1CtIsTpCOXFyHRSiR_rRl__uJU';
+
+async function sbInsert(data) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/participantes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(data)
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
+async function sbFetch() {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/participantes?order=created_at.desc', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
+    if (res.ok) return await res.json();
+    return [];
+  } catch(e) { return []; }
+}
+
+async function sbCheckDni(dni) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/participantes?dni=eq.' + encodeURIComponent(dni) + '&select=id', {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY
+      }
+    });
+    if (res.ok) { const data = await res.json(); return data.length > 0; }
+    return false;
+  } catch(e) { return false; }
+}
+
+// ========== STATE ==========
+let state = {
+  bizName: 'Mi Negocio',
+  winMsg: 'Mostrá esta pantalla al cajero para reclamar tu premio.',
+  wheelColor: '#FFD447',
+  prizes: [
+    { name: '10% de descuento', prob: 30, color: '#FFD447' },
+    { name: 'Bebida gratis', prob: 15, color: '#FF4D8D' },
+    { name: '2x1 en tu próxima visita', prob: 20, color: '#4DAAFF' },
+    { name: 'Postre gratis', prob: 10, color: '#2EE89A' },
+    { name: 'Inténtalo de nuevo', prob: 25, color: '#8B7CF6' },
+  ],
+  leads: [],
+  adminPw: 'admin123'
+};
+
+const COLORS = ['#FFD447','#FF4D8D','#4DAAFF','#2EE89A','#8B7CF6','#FF8C42','#00D4AA','#FF6B6B','#A8E063','#F7971E'];
+let spinning = false;
+let currentLead = null;
+let wheelRotation = 0;
+let offscreenCanvas = null;
+let isAdminLoggedIn = false;
+
+// ========== AUTH ==========
+function openAdminLogin() {
+  document.getElementById('login-overlay').classList.remove('hidden');
+  document.getElementById('admin-pw-input').value = '';
+  document.getElementById('login-error').textContent = '';
+  setTimeout(() => document.getElementById('admin-pw-input').focus(), 100);
+}
+
+function doLogin() {
+  const pw = document.getElementById('admin-pw-input').value;
+  if (pw === state.adminPw) {
+    isAdminLoggedIn = true;
+    document.getElementById('login-overlay').classList.add('hidden');
+    document.getElementById('nav-tabs-admin').style.display = 'flex';
+    document.getElementById('btn-logout').style.display = 'inline-block';
+    document.getElementById('btn-open-admin').style.display = 'none';
+    showPage('admin');
+    document.getElementById('biz-name').value = state.bizName;
+    document.getElementById('win-msg').value = state.winMsg;
+    document.getElementById('wheel-color').value = state.wheelColor;
+    renderPrizeList();
+    renderPreview();
+    renderLeadsTable();
+    generateQR();
+    if (state.logoDataUrl) {
+      const pw = document.getElementById('logo-preview');
+      const pw2 = document.getElementById('logo-preview-wrap');
+      if (pw) { pw.src = state.logoDataUrl; pw2.style.display = 'block'; }
+    }
+  } else {
+    const err = document.getElementById('login-error');
+    err.textContent = '❌ Contraseña incorrecta. Intentá de nuevo.';
+    document.getElementById('admin-pw-input').value = '';
+    document.getElementById('admin-pw-input').focus();
+    setTimeout(() => { err.textContent = ''; }, 3000);
+  }
+}
+
+function doLogout() {
+  isAdminLoggedIn = false;
+  document.getElementById('nav-tabs-admin').style.display = 'none';
+  document.getElementById('btn-logout').style.display = 'none';
+  document.getElementById('btn-open-admin').style.display = 'inline-block';
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-player').classList.add('active');
+  renderPlayerWheel();
+}
+
+function togglePwVisibility() {
+  const inp = document.getElementById('admin-pw-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  document.getElementById('toggle-pw-btn').textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+// ========== SHARE MODAL ==========
+function openShareModal() {
+  document.getElementById('share-modal-overlay').classList.add('show');
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal-overlay').classList.remove('show');
+}
+
+function downloadPlayerFile() {
+  // Build the player HTML dynamically injecting current state
+  const playerState = JSON.stringify(state);
+  fetch('ruleta-jugador.html')
+    .then(r => r.text())
+    .then(html => {
+      // Inject current state into the player file
+      const injected = html.replace(
+        "localStorage.getItem('spinwin-state')",
+        "localStorage.getItem('spinwin-state') || '" + playerState.replace(/'/g, "\'") + "'"
+      );
+      const blob = new Blob([injected], {type: 'text/html;charset=utf-8'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'ruleta-jugador.html';
+      a.click();
+    })
+    .catch(() => {
+      // Fallback: just show instructions
+      showToast('Descargá el archivo ruleta-jugador.html que te entregamos junto con este', true);
+      closeShareModal();
+    });
+}
+
+// ========== LOGO ==========
+function handleLogoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const dataUrl = e.target.result;
+    state.logoDataUrl = dataUrl;
+    saveAll();
+    applyLogo(dataUrl);
+  };
+  reader.readAsDataURL(file);
+}
+
+function applyLogo(dataUrl) {
+  if (!dataUrl) return;
+  // Nav logo
+  const navImg = document.getElementById('nav-logo-img');
+  const navText = document.getElementById('nav-logo-text');
+  if (navImg) { navImg.src = dataUrl; navImg.style.display = 'inline-block'; navText.style.display = 'none'; }
+  // Player header logo
+  const playerImg = document.getElementById('player-logo-img');
+  const playerWrap = document.getElementById('player-logo-wrap');
+  if (playerImg) { playerImg.src = dataUrl; playerWrap.style.display = 'block'; }
+  // Admin preview
+  const previewImg = document.getElementById('logo-preview');
+  const previewWrap = document.getElementById('logo-preview-wrap');
+  if (previewImg) { previewImg.src = dataUrl; previewWrap.style.display = 'flex'; }
+}
+
+function removeLogo() {
+  state.logoDataUrl = null;
+  saveAll();
+  const navImg = document.getElementById('nav-logo-img');
+  const navText = document.getElementById('nav-logo-text');
+  if (navImg) { navImg.src = ''; navImg.style.display = 'none'; navText.style.display = 'inline'; }
+  const playerWrap = document.getElementById('player-logo-wrap');
+  if (playerWrap) playerWrap.style.display = 'none';
+  const previewWrap = document.getElementById('logo-preview-wrap');
+  if (previewWrap) previewWrap.style.display = 'none';
+  document.getElementById('logo-upload').value = '';
+}
+
+// ========== INIT ==========
+function init() {
+  const saved = localStorage.getItem('spinwin-state');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      state = { ...state, ...parsed };
+    } catch(e) {}
+  }
+  document.getElementById('player-biz-name').textContent = state.bizName;
+  // Restore logo if saved
+  if (state.logoDataUrl) applyLogo(state.logoDataUrl);
+
+  // If hash is #player, hide admin button entirely (pure player mode)
+  if (window.location.hash === '#player') {
+    document.getElementById('btn-open-admin').style.display = 'none';
+  }
+
+  // Always start on player page
+  document.getElementById('page-admin').classList.remove('active');
+  document.getElementById('page-player').classList.add('active');
+  renderPlayerWheel();
+}
+
+function saveAll() { localStorage.setItem('spinwin-state', JSON.stringify(state)); }
+
+function saveSettings() {
+  state.bizName = document.getElementById('biz-name').value || 'Mi Negocio';
+  state.winMsg = document.getElementById('win-msg').value;
+  state.wheelColor = document.getElementById('wheel-color').value;
+  saveAll();
+}
+
+function applyConfig() {
+  saveSettings();
+  const newPw = document.getElementById('new-admin-pw').value.trim();
+  if (newPw) {
+    state.adminPw = newPw;
+    document.getElementById('new-admin-pw').value = '';
+    saveAll();
+  }
+  renderPreview();
+  renderPlayerWheel();
+  document.getElementById('player-biz-name').textContent = state.bizName;
+  showToast('✅ Configuración guardada');
+}
+
+// ========== NAV ==========
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('tab-admin').classList.toggle('active', name === 'admin');
+  document.getElementById('tab-player').classList.toggle('active', name === 'player');
+  if (name === 'player') renderPlayerWheel();
+}
+
+// ========== PRIZES ==========
+function addPrize() {
+  const name = document.getElementById('new-prize-name').value.trim();
+  const prob = parseInt(document.getElementById('new-prize-prob').value) || 20;
+  if (!name) { showToast('Escribí el nombre del premio', true); return; }
+  state.prizes.push({ name, prob, color: COLORS[state.prizes.length % COLORS.length] });
+  document.getElementById('new-prize-name').value = '';
+  document.getElementById('new-prize-prob').value = '';
+  saveAll(); renderPrizeList(); renderPreview();
+}
+
+function removePrize(i) {
+  state.prizes.splice(i, 1);
+  saveAll(); renderPrizeList(); renderPreview();
+}
+
+function renderPrizeList() {
+  const list = document.getElementById('prize-list');
+  if (!state.prizes.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:12px">No hay premios aún</div>';
+    return;
+  }
+  const total = state.prizes.reduce((s, p) => s + p.prob, 0);
+  list.innerHTML = state.prizes.map((p, i) => `
+    <div class="prize-item">
+      <div class="prize-color-dot" style="background:${p.color}"></div>
+      <div class="prize-text">${p.name}</div>
+      <div class="prize-prob">${Math.round(p.prob / total * 100)}%</div>
+      <button class="btn-remove" onclick="removePrize(${i})">✕</button>
+    </div>`).join('');
+}
+
+// ========== WHEEL DRAW ==========
+function drawWheelOnCanvas(canvas, prizes, size) {
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, size, size);
+  if (!prizes.length) {
+    ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(size/2,size/2,size/2-4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='14px Outfit'; ctx.textAlign='center';
+    ctx.fillText('Sin premios', size/2, size/2); return;
+  }
+  const total = prizes.reduce((s,p) => s+p.prob, 0);
+  const cx = size/2, cy = size/2, r = size/2 - 4;
+  let angle = -Math.PI/2;
+  prizes.forEach(prize => {
+    const slice = (prize.prob/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
+    ctx.fillStyle = prize.color; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle+slice/2);
+    ctx.textAlign='right'; ctx.fillStyle='#000';
+    ctx.font = `bold ${Math.max(9,Math.min(13,size/22))}px Outfit`;
+    ctx.shadowColor='rgba(255,255,255,0.5)'; ctx.shadowBlur=3;
+    const label = prize.name.length > 18 ? prize.name.slice(0,17)+'\u2026' : prize.name;
+    ctx.fillText(label, r-10, 4); ctx.restore();
+    angle += slice;
+  });
+  ctx.beginPath(); ctx.arc(cx,cy,size*0.08,0,Math.PI*2);
+  ctx.fillStyle='#111'; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=2; ctx.stroke();
+}
+
+function renderPreview() { drawWheelOnCanvas(document.getElementById('preview-canvas'), state.prizes, 260); }
+
+function renderPlayerWheel() {
+  const canvas = document.getElementById('wheel-canvas');
+  drawWheelOnCanvas(canvas, state.prizes, 320);
+  wheelRotation = 0;
+  offscreenCanvas = null;
+}
+
+// ========== QR (sin toDataURL sobre img) ==========
+function generateQR() {
+  const canvas = document.getElementById('qr-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 180, 180);
+
+  const url = window.location.href.split('#')[0] + '#player';
+  document.getElementById('qr-url-display').textContent = 'Escaneá para ir a la ruleta';
+
+  const tmp = document.createElement('div');
+  tmp.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:160px;height:160px;';
+  document.body.appendChild(tmp);
+
+  new QRCode(tmp, { text: url, width: 160, height: 160, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+
+  function tryDraw(attempts) {
+    const qrCanvasEl = tmp.querySelector('canvas');
+    const qrImgEl = tmp.querySelector('img');
+    if (qrCanvasEl) {
+      ctx.drawImage(qrCanvasEl, 10, 10, 160, 160);
+      document.body.removeChild(tmp); return;
+    }
+    if (qrImgEl && qrImgEl.complete && qrImgEl.naturalWidth > 0) {
+      ctx.drawImage(qrImgEl, 10, 10, 160, 160);
+      document.body.removeChild(tmp); return;
+    }
+    if (qrImgEl && !qrImgEl.complete) {
+      qrImgEl.onload = () => { ctx.drawImage(qrImgEl, 10, 10, 160, 160); document.body.removeChild(tmp); };
+      qrImgEl.onerror = () => document.body.removeChild(tmp);
+      return;
+    }
+    if (attempts > 0) setTimeout(() => tryDraw(attempts - 1), 150);
+    else document.body.removeChild(tmp);
+  }
+  setTimeout(() => tryDraw(5), 100);
+}
+
+function downloadQR() {
+  const a = document.createElement('a');
+  a.download = 'qr-ruleta.png';
+  a.href = document.getElementById('qr-canvas').toDataURL();
+  a.click();
+}
+
+// ========== PLAYER FORM ==========
+async function submitForm() {
+  const name = document.getElementById('p-name').value.trim();
+  const dni  = document.getElementById('p-dni').value.trim();
+  const phone= document.getElementById('p-phone').value.trim();
+  const alertEl = document.getElementById('form-alert');
+
+  if (!name || !dni || !phone) {
+    alertEl.textContent = 'Por favor completá todos los campos.';
+    alertEl.style.display = 'block'; return;
+  }
+  if (!/^\d{6,12}$/.test(dni)) {
+    alertEl.textContent = 'El DNI debe tener solo números (entre 6 y 12 dígitos).';
+    alertEl.style.display = 'block'; return;
+  }
+
+  // Bloqueo por DNI
+  alertEl.textContent = '⏳ Verificando...';
+  alertEl.style.display = 'block';
+  alertEl.style.background = 'rgba(255,212,71,0.1)';
+  alertEl.style.borderColor = 'rgba(255,212,71,0.3)';
+  alertEl.style.color = 'var(--gold)';
+
+  const yaParticipo = await sbCheckDni(dni);
+  if (yaParticipo) {
+    alertEl.textContent = '⚠️ Este DNI ya participó. Solo se permite un giro por persona.';
+    alertEl.style.background = 'rgba(255,77,141,0.12)';
+    alertEl.style.borderColor = 'rgba(255,77,141,0.3)';
+    alertEl.style.color = 'var(--accent)';
+    alertEl.style.display = 'block'; return;
+  }
+
+  alertEl.style.display = 'none';
+  currentLead = { name, dni, phone, date: new Date().toLocaleString('es-AR'), prize: null };
+  document.getElementById('player-form-card').style.display = 'none';
+  document.getElementById('wheel-area').style.display = 'flex';
+  renderPlayerWheel();
+}
+
+// ========== SPIN ==========
+function buildOffscreen(prizes, size) {
+  offscreenCanvas = document.createElement('canvas');
+  offscreenCanvas.width = size; offscreenCanvas.height = size;
+  const ctx = offscreenCanvas.getContext('2d');
+  if (!prizes.length) return;
+  const total = prizes.reduce((s,p)=>s+p.prob,0);
+  const cx=size/2, cy=size/2, r=size/2-4;
+  let angle = -Math.PI/2;
+  prizes.forEach(prize => {
+    const slice=(prize.prob/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,angle,angle+slice); ctx.closePath();
+    ctx.fillStyle=prize.color; ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=2; ctx.stroke();
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(angle+slice/2);
+    ctx.textAlign='right'; ctx.fillStyle='#000';
+    ctx.font=`bold ${Math.max(9,Math.min(13,size/22))}px Outfit`;
+    ctx.shadowColor='rgba(255,255,255,0.5)'; ctx.shadowBlur=3;
+    const label=prize.name.length>18?prize.name.slice(0,17)+'\u2026':prize.name;
+    ctx.fillText(label,r-10,4); ctx.restore();
+    angle+=slice;
+  });
+  ctx.beginPath(); ctx.arc(cx,cy,size*0.08,0,Math.PI*2);
+  ctx.fillStyle='#111'; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=2; ctx.stroke();
+}
+
+function spinWheel() {
+  if (spinning || !state.prizes.length) return;
+  spinning = true;
+  document.getElementById('spin-btn').disabled = true;
+
+  // Elegir premio con peso
+  const total = state.prizes.reduce((s,p)=>s+p.prob,0);
+  let r = Math.random()*total, cum=0, prizeIdx=0;
+  for (let i=0; i<state.prizes.length; i++) {
+    cum += state.prizes[i].prob;
+    if (r <= cum) { prizeIdx=i; break; }
+  }
+
+  // Calcular ángulo destino para que el premio quede bajo el puntero (arriba)
+  let sliceStart = -Math.PI/2;
+  for (let i=0; i<prizeIdx; i++) sliceStart += (state.prizes[i].prob/total)*Math.PI*2;
+  const sliceAngle = (state.prizes[prizeIdx].prob/total)*Math.PI*2;
+  const sliceMid = sliceStart + sliceAngle/2;
+  // Necesitamos: wheelRotation + sliceMid ≡ -PI/2
+  const baseTarget = -Math.PI/2 - sliceMid;
+  const curMod = ((wheelRotation % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
+  let delta = ((baseTarget % (Math.PI*2)) + Math.PI*2) % (Math.PI*2) - curMod;
+  if (delta < 0.1) delta += Math.PI*2;
+  const totalDelta = delta + (6 + Math.floor(Math.random()*4)) * Math.PI*2;
+
+  const canvas = document.getElementById('wheel-canvas');
+  const size = canvas.width;
+  buildOffscreen(state.prizes, size);
+
+  const startRot = wheelRotation;
+  const duration = 5000;
+  const startTime = performance.now();
+  function easeOut(t) { return 1 - Math.pow(1-t, 3); }
+
+  function animate(now) {
+    const t = Math.min((now-startTime)/duration, 1);
+    const rot = startRot + totalDelta * easeOut(t);
+    wheelRotation = rot;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,size,size);
+    ctx.save();
+    ctx.translate(size/2,size/2);
+    ctx.rotate(rot);
+    ctx.translate(-size/2,-size/2);
+    ctx.drawImage(offscreenCanvas,0,0);
+    ctx.restore();
+    if (t < 1) requestAnimationFrame(animate);
+    else { spinning=false; setTimeout(()=>showResult(prizeIdx), 400); }
+  }
+  requestAnimationFrame(animate);
+}
+
+// ========== RESULT ==========
+async function showResult(prizeIdx) {
+  const prize = state.prizes[prizeIdx];
+  if (currentLead) {
+    currentLead.prize = prize.name;
+    // Save to Supabase
+    await sbInsert({
+      nombre: currentLead.name,
+      dni: currentLead.dni,
+      celular: currentLead.phone,
+      premio: prize.name,
+      fecha: currentLead.date
+    });
+    state.leads.unshift({...currentLead});
+    saveAll();
+    renderLeadsTable();
+  }
+  document.getElementById('modal-prize').textContent = prize.name;
+  document.getElementById('modal-msg').textContent = state.winMsg;
+  const isLoss = prize.name.toLowerCase().includes('intento') || prize.name.toLowerCase().includes('suerte');
+  document.getElementById('modal-emoji').textContent = isLoss ? '😅' : '🎉';
+  document.getElementById('result-modal').classList.add('show');
+  if (!isLoss) launchConfetti();
+}
+
+function closeModal() { document.getElementById('result-modal').classList.remove('show'); }
+
+function launchConfetti() {
+  const colors = ['#FFD447','#FF4D8D','#4DAAFF','#2EE89A','#FF8C42'];
+  for (let i=0; i<80; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.left = Math.random()*100+'vw';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.animationDuration = (1.5+Math.random()*2)+'s';
+    el.style.animationDelay = Math.random()*0.8+'s';
+    el.style.width = el.style.height = (6+Math.random()*8)+'px';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(), 4000);
+  }
+}
+
+// ========== LEADS ==========
+async function renderLeadsTable() {
+  const wrap = document.getElementById('leads-table-wrap');
+  wrap.innerHTML = '<div class="empty-state">Cargando participantes...</div>';
+  const rows = await sbFetch();
+  if (!rows.length) {
+    wrap.innerHTML = '<div class="empty-state">Aún no hay participantes.</div>'; return;
+  }
+  wrap.innerHTML = `
+    <table class="leads-table">
+      <thead><tr><th>Nombre</th><th>DNI</th><th>Celular</th><th>Premio</th><th>Fecha</th></tr></thead>
+      <tbody>${rows.map(l=>`
+        <tr>
+          <td>${l.nombre||''}</td>
+          <td>${l.dni||''}</td>
+          <td>${l.celular||''}</td>
+          <td><span class="prize-badge">${l.premio||'-'}</span></td>
+          <td style="color:var(--muted);font-size:12px">${l.fecha||''}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+  // Also update local state for CSV export
+  state.leads = rows.map(r => ({name:r.nombre, dni:r.dni, phone:r.celular, prize:r.premio, date:r.fecha}));
+}
+
+function exportCSV() {
+  if (!state.leads.length) { showToast('No hay datos para exportar', true); return; }
+  const rows = state.leads.map(l=>`"${l.name}","${l.dni}","${l.phone}","${l.prize}","${l.date}"`);
+  const csv = ['Nombre,DNI,Celular,Premio,Fecha',...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download = 'participantes-ruleta.csv'; a.click();
+}
+
+function showToast(msg, isError=false) {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:${isError?'#FF4D8D':'#2EE89A'};color:#000;padding:12px 24px;border-radius:30px;font-weight:700;font-size:14px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.3)`;
+  t.textContent = msg; document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2500);
+}
+
+init();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" onload="if(typeof generateQR==='function'){}"></script>
+</body>
+</html>
