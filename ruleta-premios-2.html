@@ -21,7 +21,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-  .nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; background: var(--surface); border-bottom: 1px solid rgba(255,212,71,0.15); }
+  .nav { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; background: var(--surface); border-bottom: 1px solid rgba(255,212,71,0.15); flex-wrap: wrap; gap: 10px; }
   .nav-logo { font-family: 'Bebas Neue', cursive; font-size: 26px; color: var(--gold); letter-spacing: 2px; }
   .nav-tabs { display: flex; gap: 8px; }
   .nav-tab { padding: 8px 18px; border-radius: 30px; border: 1.5px solid rgba(255,255,255,0.1); background: transparent; color: var(--muted); font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
@@ -68,10 +68,23 @@
   .settings-form { display: flex; flex-direction: column; gap: 12px; }
   label.field-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: -4px; font-weight: 600; display: block; }
 
+  /* Logo upload */
+  .logo-upload-area { border: 2px dashed rgba(255,212,71,0.3); border-radius: 12px; padding: 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: border-color 0.2s; background: var(--surface2); }
+  .logo-upload-area:hover { border-color: var(--gold); }
+  .logo-upload-btn { background: rgba(255,212,71,0.15); border: 1px solid rgba(255,212,71,0.3); color: var(--gold); padding: 8px 14px; border-radius: 8px; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .logo-preview { max-height: 48px; max-width: 120px; border-radius: 6px; object-fit: contain; display: none; }
+  .logo-remove { color: var(--accent); font-size: 12px; cursor: pointer; margin-left: auto; white-space: nowrap; }
+  #logo-file-input { display: none; }
+
+  /* Color picker */
+  .color-picker-row { display: flex; align-items: center; gap: 12px; }
+  .color-swatch { width: 40px; height: 40px; border-radius: 8px; border: 2px solid rgba(255,255,255,0.15); cursor: pointer; flex-shrink: 0; }
+  input[type="color"] { width: 0; height: 0; opacity: 0; position: absolute; }
+
   .wheel-preview { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 
   .leads-wrap { margin-top: 36px; }
-  .leads-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .leads-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
   .leads-table { width: 100%; border-collapse: collapse; font-size: 14px; }
   .leads-table th { text-align: left; padding: 10px 14px; background: var(--surface2); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; }
   .leads-table th:first-child { border-radius: 8px 0 0 8px; }
@@ -80,8 +93,10 @@
   .prize-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; background: rgba(255,212,71,0.15); color: var(--gold); }
   .empty-state { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
 
+  /* Player page styles */
   .player-page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 24px 16px 40px; background: radial-gradient(ellipse at top, #1A1040 0%, var(--bg) 65%); }
   .player-header { text-align: center; margin-bottom: 20px; }
+  .player-logo { max-height: 80px; max-width: 200px; object-fit: contain; margin-bottom: 10px; border-radius: 8px; display: none; }
   .player-biz-name { font-family: 'Bebas Neue', cursive; font-size: 36px; color: var(--gold); letter-spacing: 3px; line-height: 1.1; }
   .player-subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
   .player-form-card { background: var(--surface); border: 1px solid rgba(255,212,71,0.15); border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 420px; margin-bottom: 24px; }
@@ -146,7 +161,7 @@
 
 <nav class="nav">
   <div class="nav-logo">🎰 Ruleta Admin</div>
-  <div style="display:flex;align-items:center;gap:10px">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <div class="nav-tabs" id="nav-tabs-admin" style="display:none">
       <button class="nav-tab active" id="tab-admin" onclick="showPage('admin')">⚙️ Admin</button>
       <button class="nav-tab" id="tab-player" onclick="showPage('player')">🎡 Vista Jugador</button>
@@ -156,12 +171,14 @@
   </div>
 </nav>
 
+<!-- ADMIN PAGE -->
 <div id="page-admin" class="page">
 <div class="admin-wrap">
   <div class="section-title">Panel de Administración</div>
   <div class="section-sub">Los cambios se sincronizan automáticamente con la ruleta de jugadores</div>
   <div class="admin-grid">
 
+    <!-- Premios -->
     <div class="card">
       <div class="card-title"><span class="dot"></span> Premios de la Ruleta</div>
       <div class="prize-list" id="prize-list"></div>
@@ -174,26 +191,45 @@
       </div>
     </div>
 
+    <!-- Configuración -->
     <div class="card">
       <div class="card-title"><span class="dot"></span> Configuración del Negocio</div>
       <div class="settings-form">
         <div>
           <label class="field-label">Nombre del negocio</label>
-          <input class="field" id="biz-name" placeholder="ej: Café El Rincón" style="width:100%" />
+          <input class="field" id="biz-name" placeholder="ej: Tukso" style="width:100%" />
         </div>
         <div>
           <label class="field-label">Mensaje al ganar</label>
-          <textarea class="field" id="win-msg" rows="3" placeholder="ej: ¡Felicidades! Mostrá esta pantalla al cajero." style="resize:vertical;width:100%"></textarea>
+          <textarea class="field" id="win-msg" rows="3" placeholder="ej: ¡Felicidades! Pasá por el local." style="resize:vertical;width:100%"></textarea>
+        </div>
+        <div>
+          <label class="field-label">Color primario</label>
+          <div class="color-picker-row">
+            <div class="color-swatch" id="color-swatch" onclick="document.getElementById('color-input').click()"></div>
+            <input type="color" id="color-input" value="#FFD447" oninput="updateColorPreview(this.value)" />
+            <span style="color:var(--muted);font-size:13px" id="color-hex-label">#FFD447</span>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Logo de la empresa (JPG/PNG)</label>
+          <div class="logo-upload-area" onclick="document.getElementById('logo-file-input').click()">
+            <button class="logo-upload-btn" type="button">📁 Seleccionar imagen</button>
+            <img class="logo-preview" id="logo-preview-admin" src="" alt="Logo" />
+            <span class="logo-remove" id="logo-remove-btn" style="display:none" onclick="removeLogo(event)">✕ Quitar</span>
+          </div>
+          <input type="file" id="logo-file-input" accept="image/jpeg,image/png,image/gif,image/webp" onchange="handleLogoUpload(event)" />
         </div>
         <div>
           <label class="field-label">Nueva contraseña admin</label>
           <input class="field" id="new-admin-pw" placeholder="Dejar vacío para no cambiar" style="width:100%" />
         </div>
-        <button class="btn btn-green" onclick="saveConfig()">💾 Guardar y Sincronizar</button>
+        <button class="btn btn-green" onclick="saveConfig()">💾 Guardar y Actualizar Ruleta</button>
         <div class="saving-indicator" id="saving-indicator">⏳ Guardando en Supabase...</div>
       </div>
     </div>
 
+    <!-- Vista previa -->
     <div class="card">
       <div class="card-title"><span class="dot"></span> Vista Previa Ruleta</div>
       <div class="wheel-preview">
@@ -202,6 +238,7 @@
       </div>
     </div>
 
+    <!-- Link jugadores -->
     <div class="card">
       <div class="card-title"><span class="dot"></span> Link para Jugadores</div>
       <div style="display:flex;flex-direction:column;gap:12px;padding:10px 0">
@@ -216,10 +253,11 @@
 
   </div>
 
+  <!-- Participantes -->
   <div class="leads-wrap">
     <div class="leads-header">
       <div class="section-title" style="font-size:24px;margin-bottom:0">📋 Participantes Registrados</div>
-      <div style="display:flex;gap:8px">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-outline" onclick="renderLeadsTable()">🔄 Actualizar</button>
         <button class="btn btn-outline" onclick="exportCSV()">⬇ Exportar CSV</button>
       </div>
@@ -229,10 +267,12 @@
 </div>
 </div>
 
+<!-- PLAYER PAGE -->
 <div id="page-player" class="page active">
 <div class="player-page">
   <div class="player-header">
-    <div class="player-biz-name" id="player-biz-name">Mi Negocio</div>
+    <img class="player-logo" id="player-logo" src="" alt="Logo" />
+    <div class="player-biz-name" id="player-biz-name">Tukso</div>
     <div class="player-subtitle">¡Girá la ruleta y ganá un premio! 🎁</div>
   </div>
   <div class="player-form-card" id="player-form-card">
@@ -278,9 +318,11 @@ const SUPABASE_URL = 'https://sgrzjmjqurxgpwoythvb.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNncnpqbWpxdXJ4Z3B3b3l0aHZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMjcwNTQsImV4cCI6MjA5NDkwMzA1NH0.0ZI61twlhx5DHnPlY1CtIsTpCOXFyHRSiR_rRl__uJU';
 const SB_HEADERS = { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY };
 
+// ── Supabase helpers ──────────────────────────────────────────────
 async function sbGetConfig() {
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/configuracion?id=eq.1', { headers: SB_HEADERS });
+    // Uses limit=1 so it works regardless of the actual id value
+    const res = await fetch(SUPABASE_URL + '/rest/v1/configuracion?limit=1', { headers: SB_HEADERS });
     if (res.ok) { const data = await res.json(); return data[0] || null; }
     return null;
   } catch(e) { return null; }
@@ -288,7 +330,13 @@ async function sbGetConfig() {
 
 async function sbSaveConfig(payload) {
   try {
-    const res = await fetch(SUPABASE_URL + '/rest/v1/configuracion?id=eq.1', {
+    // Fetch the real id first, then PATCH by that id
+    const res0 = await fetch(SUPABASE_URL + '/rest/v1/configuracion?limit=1&select=id', { headers: SB_HEADERS });
+    if (!res0.ok) return false;
+    const rows = await res0.json();
+    if (!rows.length) return false;
+    const realId = rows[0].id;
+    const res = await fetch(SUPABASE_URL + '/rest/v1/configuracion?id=eq.' + realId, {
       method: 'PATCH',
       headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
       body: JSON.stringify(payload)
@@ -324,26 +372,40 @@ async function sbCheckDni(dni) {
   } catch(e) { return false; }
 }
 
+// ── State ─────────────────────────────────────────────────────────
 const COLORS = ['#FFD447','#FF4D8D','#4DAAFF','#2EE89A','#8B7CF6','#FF8C42','#00D4AA','#FF6B6B','#A8E063','#F7971E'];
 const DEFAULT_PRIZES = [
-  { name: '10% de descuento', prob: 30, color: '#FFD447' },
-  { name: 'Bebida gratis', prob: 15, color: '#FF4D8D' },
-  { name: '2x1 en tu próxima visita', prob: 20, color: '#4DAAFF' },
-  { name: 'Postre gratis', prob: 10, color: '#2EE89A' },
-  { name: 'Inténtalo de nuevo', prob: 25, color: '#8B7CF6' },
+  { name: '20% de descuento', prob: 30, color: '#FFD447' },
+  { name: '15% de descuento', prob: 25, color: '#FF4D8D' },
+  { name: '25% de descuento', prob: 20, color: '#4DAAFF' },
+  { name: '$5000 off +$40000', prob: 12, color: '#8B7CF6' },
+  { name: 'Muestras gratis!',  prob: 8,  color: '#FF8C42' },
+  { name: '30% de descuento', prob: 5,  color: '#2EE89A' },
 ];
 
-let state = { bizName: 'Mi Negocio', winMsg: 'Mostrá esta pantalla al cajero para reclamar tu premio.', prizes: [...DEFAULT_PRIZES], adminPw: 'admin123' };
-let spinning = false, currentLead = null, wheelRotation = 0, offscreenCanvas = null, isAdminLoggedIn = false, leadsData = [];
+let state = {
+  bizName: 'Tukso',
+  winMsg: 'Desde el 8 de Junio al 30 del mismo mes podes pasar con tu DNI por Av. Santamarina a hacer uso de tu premio!',
+  prizes: [...DEFAULT_PRIZES],
+  adminPw: 'admin123',
+  primaryColor: '#FFD447',
+  logoBase64: ''
+};
+let spinning = false, currentLead = null, wheelRotation = 0, offscreenCanvas = null;
+let isAdminLoggedIn = false, leadsData = [];
 
+// ── Init ──────────────────────────────────────────────────────────
 async function init() {
   const config = await sbGetConfig();
   if (config) {
     if (config.prizes && config.prizes.length > 0) state.prizes = config.prizes;
     if (config.biz_name) state.bizName = config.biz_name;
     if (config.win_msg) state.winMsg = config.win_msg;
+    if (config.primary_color) state.primaryColor = config.primary_color;
+    if (config.logo_url) state.logoBase64 = config.logo_url;
+    if (config.admin_pw) state.adminPw = config.admin_pw;
   }
-  document.getElementById('player-biz-name').textContent = state.bizName;
+  applyBranding();
   document.getElementById('page-admin').classList.remove('active');
   document.getElementById('page-player').classList.add('active');
   renderPlayerWheel();
@@ -351,6 +413,15 @@ async function init() {
   document.getElementById('player-link').textContent = playerUrl;
 }
 
+function applyBranding() {
+  document.getElementById('player-biz-name').textContent = state.bizName;
+  // Logo
+  const logoEl = document.getElementById('player-logo');
+  if (state.logoBase64) { logoEl.src = state.logoBase64; logoEl.style.display = 'block'; }
+  else { logoEl.style.display = 'none'; }
+}
+
+// ── Login ─────────────────────────────────────────────────────────
 function openAdminLogin() {
   document.getElementById('login-overlay').classList.remove('hidden');
   document.getElementById('admin-pw-input').value = '';
@@ -366,8 +437,16 @@ function doLogin() {
     document.getElementById('nav-tabs-admin').style.display = 'flex';
     document.getElementById('btn-logout').style.display = 'inline-block';
     document.getElementById('btn-open-admin').style.display = 'none';
+    // Populate form
     document.getElementById('biz-name').value = state.bizName;
     document.getElementById('win-msg').value = state.winMsg;
+    document.getElementById('color-input').value = state.primaryColor || '#FFD447';
+    updateColorPreview(state.primaryColor || '#FFD447');
+    if (state.logoBase64) {
+      const prev = document.getElementById('logo-preview-admin');
+      prev.src = state.logoBase64; prev.style.display = 'block';
+      document.getElementById('logo-remove-btn').style.display = 'inline';
+    }
     showPage('admin');
     renderPrizeList();
     renderPreview();
@@ -376,7 +455,6 @@ function doLogin() {
     const err = document.getElementById('login-error');
     err.textContent = '❌ Contraseña incorrecta.';
     document.getElementById('admin-pw-input').value = '';
-    document.getElementById('admin-pw-input').focus();
     setTimeout(() => { err.textContent = ''; }, 3000);
   }
 }
@@ -395,6 +473,7 @@ function togglePwVisibility() {
   document.getElementById('toggle-pw-btn').textContent = inp.type === 'password' ? '👁' : '🙈';
 }
 
+// ── Pages ─────────────────────────────────────────────────────────
 function showPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
@@ -405,19 +484,69 @@ function showPage(name) {
   if (name === 'player') renderPlayerWheel();
 }
 
+// ── Color picker ──────────────────────────────────────────────────
+function updateColorPreview(val) {
+  document.getElementById('color-swatch').style.background = val;
+  document.getElementById('color-hex-label').textContent = val;
+}
+
+// ── Logo upload ───────────────────────────────────────────────────
+function handleLogoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 500000) { showToast('La imagen es muy grande. Usá una de menos de 500KB.', true); return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result;
+    state.logoBase64 = base64;
+    const prev = document.getElementById('logo-preview-admin');
+    prev.src = base64; prev.style.display = 'block';
+    document.getElementById('logo-remove-btn').style.display = 'inline';
+    applyBranding();
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeLogo(e) {
+  e.stopPropagation();
+  state.logoBase64 = '';
+  const prev = document.getElementById('logo-preview-admin');
+  prev.src = ''; prev.style.display = 'none';
+  document.getElementById('logo-remove-btn').style.display = 'none';
+  document.getElementById('logo-file-input').value = '';
+  applyBranding();
+}
+
+// ── Save config ───────────────────────────────────────────────────
 async function saveConfig() {
-  const newBizName = document.getElementById('biz-name').value.trim() || 'Mi Negocio';
-  const newWinMsg = document.getElementById('win-msg').value.trim();
-  const newPw = document.getElementById('new-admin-pw').value.trim();
+  const newBizName = document.getElementById('biz-name').value.trim() || 'Tukso';
+  const newWinMsg  = document.getElementById('win-msg').value.trim();
+  const newColor   = document.getElementById('color-input').value;
+  const newPw      = document.getElementById('new-admin-pw').value.trim();
+
   state.bizName = newBizName;
-  state.winMsg = newWinMsg;
+  state.winMsg  = newWinMsg;
+  state.primaryColor = newColor;
   if (newPw) { state.adminPw = newPw; document.getElementById('new-admin-pw').value = ''; }
+
   document.getElementById('saving-indicator').style.display = 'block';
-  const ok = await sbSaveConfig({ prizes: state.prizes, biz_name: state.bizName, win_msg: state.winMsg });
+
+  const payload = {
+    prizes: state.prizes,
+    biz_name: state.bizName,
+    win_msg: state.winMsg,
+    primary_color: state.primaryColor,
+    logo_url: state.logoBase64
+  };
+  // Only save password hash if changed (store plaintext for simplicity)
+  if (newPw) payload.admin_pw = state.adminPw;
+
+  const ok = await sbSaveConfig(payload);
   document.getElementById('saving-indicator').style.display = 'none';
+
   if (ok) {
     showToast('✅ Guardado y sincronizado con jugadores');
-    document.getElementById('player-biz-name').textContent = state.bizName;
+    applyBranding();
     renderPlayerWheel();
   } else {
     showToast('❌ Error al guardar. Revisá tu conexión.', true);
@@ -429,6 +558,7 @@ function copyPlayerLink() {
   navigator.clipboard.writeText(url).then(() => showToast('✅ Link copiado')).catch(() => showToast('No se pudo copiar', true));
 }
 
+// ── Prizes ────────────────────────────────────────────────────────
 function addPrize() {
   const name = document.getElementById('new-prize-name').value.trim();
   const prob = parseInt(document.getElementById('new-prize-prob').value) || 20;
@@ -457,6 +587,7 @@ function renderPrizeList() {
     </div>`).join('');
 }
 
+// ── Wheel drawing ─────────────────────────────────────────────────
 function drawWheelOnCanvas(canvas, prizes, size) {
   canvas.width = size; canvas.height = size;
   const ctx = canvas.getContext('2d');
@@ -486,6 +617,7 @@ function drawWheelOnCanvas(canvas, prizes, size) {
 function renderPreview() { drawWheelOnCanvas(document.getElementById('preview-canvas'), state.prizes, 260); }
 function renderPlayerWheel() { drawWheelOnCanvas(document.getElementById('wheel-canvas'), state.prizes, 320); wheelRotation=0; offscreenCanvas=null; }
 
+// ── Player form ───────────────────────────────────────────────────
 async function submitForm() {
   const name=document.getElementById('p-name').value.trim(), dni=document.getElementById('p-dni').value.trim(), phone=document.getElementById('p-phone').value.trim();
   const alertEl=document.getElementById('form-alert');
@@ -502,6 +634,7 @@ async function submitForm() {
   renderPlayerWheel();
 }
 
+// ── Spin ──────────────────────────────────────────────────────────
 function spinWheel() {
   if (spinning||!state.prizes.length) return;
   spinning=true; document.getElementById('spin-btn').disabled=true;
@@ -558,6 +691,7 @@ function launchConfetti() {
   }
 }
 
+// ── Leads table ───────────────────────────────────────────────────
 async function renderLeadsTable() {
   const wrap=document.getElementById('leads-table-wrap');
   wrap.innerHTML='<div class="empty-state">Cargando participantes...</div>';
